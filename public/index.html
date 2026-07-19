@@ -94,7 +94,7 @@
   <div class="toolbar">
     <div class="brand">Ivy Resume Builder</div>
     <div class="tabs" role="tablist" aria-label="Resume views"><button class="tab" id="previewTab" type="button" role="tab" aria-controls="resumeView" aria-selected="true">Preview</button><button class="tab" id="jsonTab" type="button" role="tab" aria-controls="jsonView" aria-selected="false">Edit JSON</button></div>
-    <div class="actions"><label class="button secondary" for="jsonFile"><i class="fa-solid fa-file-import"></i> Load JSON</label><input id="jsonFile" type="file" accept="application/json,.json"><button class="button secondary" type="button" onclick="downloadSample()"><i class="fa-solid fa-file-arrow-down"></i> Download Sample JSON</button><button class="button" onclick="exportDocx()"><i class="fa-solid fa-file-word"></i> Export Word</button><button class="button" onclick="window.print()"><i class="fa-solid fa-file-pdf"></i> Export PDF</button></div>
+    <div class="actions"><button class="button secondary" id="signInButton" type="button"><i class="fa-brands fa-google"></i> Sign in with Google</button><button class="button secondary" id="signOutButton" type="button" hidden><i class="fa-solid fa-right-from-bracket"></i> Sign out</button><button class="button secondary" id="saveDriveButton" type="button" hidden disabled><i class="fa-brands fa-google-drive"></i> Save to Drive</button><label class="button secondary" for="jsonFile"><i class="fa-solid fa-file-import"></i> Load JSON</label><input id="jsonFile" type="file" accept="application/json,.json"><button class="button secondary" type="button" onclick="downloadJson()"><i class="fa-solid fa-file-arrow-down"></i> Download JSON</button><button class="button" onclick="exportDocx()"><i class="fa-solid fa-file-word"></i> Export Word</button><button class="button" onclick="window.print()"><i class="fa-solid fa-file-pdf"></i> Export PDF</button></div>
   </div>
   <section id="resumeView" role="tabpanel" aria-labelledby="previewTab"><div id="resume" class="resume"></div></section>
   <section id="jsonView" class="json-editor" role="tabpanel" aria-labelledby="jsonTab" hidden>
@@ -385,11 +385,11 @@
         button.innerHTML = originalLabel;
       }
     }
-    function downloadSample() {
-      const blob = new Blob([JSON.stringify(sampleResume, null, 2) + "\n"], { type: "application/json" });
+    function downloadJson() {
+      const blob = new Blob([jsonEditor.value], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url; link.download = "sample-resume.json"; link.click();
+      link.href = url; link.download = "resume.json"; link.click();
       URL.revokeObjectURL(url);
     }
     document.querySelector("#jsonFile").addEventListener("change", event => {
@@ -413,6 +413,220 @@
     window.addEventListener("beforeprint", () => switchTab("preview"));
     jsonEditor.value = formatJson(sampleResume);
     render(sampleResume);
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+    import { browserLocalPersistence, getAuth, GoogleAuthProvider, onAuthStateChanged, reauthenticateWithPopup, setPersistence, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+
+    // Copy these values from Firebase Console > Project settings > Your apps > Web app.
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxUSo7qUsuaebRJKEpijCCJrCYyK8NAn0",
+      authDomain: "resume-builder-json.firebaseapp.com",
+      projectId: "resume-builder-json",
+      storageBucket: "resume-builder-json.firebasestorage.app",
+      messagingSenderId: "1011262511123",
+      appId: "1:1011262511123:web:ee5fbee1ff1e5537e007e6"
+    };
+    const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+    const RESUME_FILE_NAME = "resume-builder.json";
+    const RESUME_FILE_PROPERTY = "resume-builder";
+    const signInButton = document.querySelector("#signInButton");
+    const signOutButton = document.querySelector("#signOutButton");
+    const saveDriveButton = document.querySelector("#saveDriveButton");
+    const jsonEditor = document.querySelector("#jsonEditor");
+    const jsonStatus = document.querySelector("#jsonStatus");
+    let auth;
+    let currentUser;
+    let driveAccessToken = "";
+    let driveFileId = "";
+
+    const configured = !Object.values(firebaseConfig).some(value => value.startsWith("REPLACE_WITH_"));
+    const setStatus = (message, isError = false) => {
+      jsonStatus.textContent = message;
+      jsonStatus.classList.toggle("error", isError);
+    };
+    const fileKey = user => `resume-builder-drive-file:${user.uid}`;
+    const driveTokenKey = user => `resume-builder-drive-token:${user.uid}`;
+    const resetDriveConnection = () => {
+      if (currentUser) sessionStorage.removeItem(driveTokenKey(currentUser));
+      driveAccessToken = "";
+      driveFileId = "";
+      signInButton.hidden = false;
+      signOutButton.hidden = true;
+      saveDriveButton.hidden = true;
+      saveDriveButton.disabled = true;
+      signInButton.disabled = false;
+      signInButton.innerHTML = '<i class="fa-brands fa-google"></i> Sign in with Google';
+    };
+    const showSignedInControls = () => {
+      signInButton.hidden = true;
+      signOutButton.hidden = false;
+      saveDriveButton.hidden = false;
+      saveDriveButton.disabled = false;
+    };
+    async function restoreDriveSession(user) {
+      const savedToken = sessionStorage.getItem(driveTokenKey(user));
+      if (!savedToken) {
+        resetDriveConnection();
+        setStatus("Sign in with Google to load or save your resume.");
+        return;
+      }
+      driveAccessToken = savedToken;
+      driveFileId = localStorage.getItem(fileKey(user)) || "";
+      showSignedInControls();
+      try {
+        await loadDriveResume();
+      } catch (error) {
+        resetDriveConnection();
+        setStatus(`Could not restore Google Drive: ${error.message}`, true);
+      }
+    }
+    const setBusy = (button, busy, label) => {
+      button.disabled = busy;
+      if (label) button.innerHTML = busy ? '<i class="fa-solid fa-spinner fa-spin"></i> ' + label : label;
+    };
+    async function driveRequest(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: { Authorization: `Bearer ${driveAccessToken}`, ...(options.headers || {}) }
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        const error = new Error(detail.error?.message || `Google Drive request failed (${response.status}).`);
+        error.status = response.status;
+        throw error;
+      }
+      return response;
+    }
+    function currentJson() {
+      const data = JSON.parse(jsonEditor.value);
+      if (!data || Array.isArray(data) || typeof data !== "object") throw new Error("The resume must be a JSON object.");
+      return JSON.stringify(data, null, 2) + "\n";
+    }
+    async function findResumeFile() {
+      if (driveFileId) return driveFileId;
+      const query = `appProperties has { key='${RESUME_FILE_PROPERTY}' and value='true' } and trashed=false`;
+      const params = new URLSearchParams({ q: query, fields: "files(id)", pageSize: "1", spaces: "drive" });
+      const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?${params}`);
+      const file = (await response.json()).files?.[0];
+      if (file) {
+        driveFileId = file.id;
+        localStorage.setItem(fileKey(currentUser), driveFileId);
+      }
+      return driveFileId;
+    }
+    async function loadDriveResume() {
+      const fileId = await findResumeFile();
+      if (!fileId) {
+        setStatus("No saved Drive resume found. The sample resume is loaded.");
+        return;
+      }
+      try {
+        const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`);
+        const text = await response.text();
+        const data = JSON.parse(text);
+        if (!data || Array.isArray(data) || typeof data !== "object") throw new Error("The saved file is not a resume JSON object.");
+        jsonEditor.value = JSON.stringify(data, null, 2) + "\n";
+        jsonEditor.dispatchEvent(new Event("input"));
+        setStatus("Loaded your saved resume from Google Drive.");
+      } catch (error) {
+        if (error.status === 404) {
+          driveFileId = "";
+          localStorage.removeItem(fileKey(currentUser));
+          setStatus("Your saved Drive resume no longer exists. The sample resume is loaded.");
+          return;
+        }
+        throw error;
+      }
+    }
+    async function saveDriveResume() {
+      const content = currentJson();
+      setBusy(saveDriveButton, true, "Saving to Drive…");
+      try {
+        const fileId = await findResumeFile();
+        if (fileId) {
+          await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=media`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: content
+          });
+        } else {
+          const boundary = "resume_builder_boundary";
+          const metadata = { name: RESUME_FILE_NAME, mimeType: "application/json", appProperties: { [RESUME_FILE_PROPERTY]: "true" } };
+          const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
+          const response = await driveRequest("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {
+            method: "POST",
+            headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
+            body
+          });
+          driveFileId = (await response.json()).id;
+          localStorage.setItem(fileKey(currentUser), driveFileId);
+        }
+        setStatus("Saved to your Google Drive.");
+      } catch (error) {
+        resetDriveConnection();
+        setStatus(`Could not save to Google Drive: ${error.message}`, true);
+      } finally {
+        if (driveAccessToken) setBusy(saveDriveButton, false, '<i class="fa-brands fa-google-drive"></i> Save to Drive');
+      }
+    }
+    async function signIn() {
+      const provider = new GoogleAuthProvider();
+      provider.addScope(DRIVE_SCOPE);
+      setBusy(signInButton, true, "Connecting…");
+      try {
+        const result = currentUser
+          ? await reauthenticateWithPopup(currentUser, provider)
+          : await signInWithPopup(auth, provider);
+        currentUser = result.user;
+        driveAccessToken = GoogleAuthProvider.credentialFromResult(result)?.accessToken || "";
+        if (!driveAccessToken) throw new Error("Google Drive permission was not granted.");
+        sessionStorage.setItem(driveTokenKey(currentUser), driveAccessToken);
+        driveFileId = localStorage.getItem(fileKey(currentUser)) || "";
+        showSignedInControls();
+        await loadDriveResume();
+      } catch (error) {
+        resetDriveConnection();
+        setStatus(`Google sign-in failed: ${error.message}`, true);
+      } finally {
+        if (!driveAccessToken) resetDriveConnection();
+        else signInButton.disabled = false;
+      }
+    }
+    async function signOutUser() {
+      const activeTokenKey = currentUser ? driveTokenKey(currentUser) : "";
+      try {
+        await signOut(auth);
+        if (activeTokenKey) sessionStorage.removeItem(activeTokenKey);
+        resetDriveConnection();
+        jsonEditor.value = JSON.stringify(sampleResume, null, 2) + "\n";
+        jsonEditor.dispatchEvent(new Event("input"));
+        setStatus("Signed out. The sample resume is loaded.");
+      } catch (error) {
+        setStatus(`Could not sign out: ${error.message}`, true);
+      }
+    }
+
+    if (!configured) {
+      signInButton.disabled = true;
+      setStatus("Add your Firebase web-app configuration to enable Google sign-in and Drive saving.");
+    } else {
+      auth = getAuth(initializeApp(firebaseConfig));
+      signInButton.addEventListener("click", signIn);
+      signOutButton.addEventListener("click", signOutUser);
+      saveDriveButton.addEventListener("click", saveDriveResume);
+      setPersistence(auth, browserLocalPersistence).catch(error => {
+        setStatus(`Could not retain your sign-in session: ${error.message}`, true);
+      });
+      onAuthStateChanged(auth, user => {
+        currentUser = user;
+        if (user && !driveAccessToken) {
+          restoreDriveSession(user);
+        } else if (!user) {
+          resetDriveConnection();
+        }
+      });
+    }
   </script>
 </body>
 </html>
