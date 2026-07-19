@@ -2,6 +2,8 @@
 
 This is a static site and is ready to deploy with Firebase Hosting.
 
+Use the **Edit JSON** tab to edit the current resume data directly. The preview updates as soon as the JSON becomes valid; incomplete or invalid edits leave the last valid preview in place and show the parsing issue.
+
 ## Deploy
 
 1. Install the project dependencies (once): `yarn install`
