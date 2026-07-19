@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resume Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    :root { --ink:#17253a; --muted:#617084; --accent:#0c3a67; --soft:#e9f0f7; --paper:#fff; --canvas:#eef2f6; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,Arial,sans-serif; color:var(--ink); background:var(--canvas); line-height:1.5; }
+    .toolbar { position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; gap:16px; max-width:210mm; margin:0 auto; padding:15px 0; }
+    .brand { font-size:.86rem; font-weight:800; letter-spacing:.11em; text-transform:uppercase; color:var(--accent); }
+    .actions { display:flex; align-items:center; gap:10px; }
+    .button { border:0; border-radius:7px; padding:10px 14px; font:600 .82rem Inter,Arial,sans-serif; cursor:pointer; color:#fff; background:var(--accent); }
+    .button.secondary { color:var(--accent); background:#dbe8f4; }
+    input[type=file] { display:none; }
+    .resume { width:210mm; margin:0 auto 32px; }
+    .page { width:210mm; height:297mm; margin:0 0 12px; overflow:hidden; background:var(--paper); box-shadow:0 12px 35px #24374b22; }
+    .page-body { padding:5mm 14mm 7mm; }
+    .page:not(:first-child) .page-body { padding-top:12mm; }
+    .hero { display:block; padding:12mm 14mm 6mm; color:var(--ink); text-align:center; border-top:7px solid var(--accent); }
+    .hero-main { padding:0; }
+    .hero h1 { margin:0; color:var(--accent); font-family:Georgia,serif; font-size:2.1rem; font-weight:700; line-height:1.08; letter-spacing:.015em; }
+    .role { margin:7px 0 0; color:#354e68; font-size:.8rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .summary { max-width:700px; margin:16px auto 0; font-size:.76rem; line-height:1.6; opacity:1; }
+    .contact { display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center; gap:5px 15px; padding:15px 0 0; background:transparent; font-size:.68rem; }
+    .contact div { display:flex; gap:5px; align-items:center; }
+    .contact i { width:auto; margin:0; color:var(--accent); text-align:center; }
+    .contact a { color:inherit; text-decoration:none; overflow-wrap:anywhere; }
+    .body { display:block; }
+    main, aside, .page-body { padding:5mm 14mm 7mm; border:0; background:#fff; }
+    aside { padding-top:0; }
+    section + section { margin-top:22px; }
+    h2 { display:flex; align-items:center; gap:9px; margin:0 0 11px; color:var(--accent); font-family:Georgia,serif; font-size:.84rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    h2::after { content:""; height:1px; flex:1; background:#9cafc1; }
+    .item { margin-bottom:16px; }
+    .item:last-child { margin-bottom:0; }
+    .item-head { display:flex; justify-content:space-between; gap:18px; align-items:baseline; }
+    h3 { margin:0; font-size:.92rem; line-height:1.35; }
+    .meta { flex:none; color:var(--muted); font-size:.67rem; font-weight:600; white-space:nowrap; }
+    .org { margin:2px 0 7px; color:#405975; font-size:.72rem; font-weight:700; }
+    p { margin:0; font-size:.73rem; }
+    ul { margin:8px 0 0; padding:0 0 0 16px; font-size:.72rem; }
+    li + li { margin-top:4px; }
+    .tag-list { display:flex; flex-wrap:wrap; gap:6px; }
+    .tag { border:0; border-radius:0; padding:0 9px 0 0; color:#314b66; background:#fff; font-size:.68rem; font-weight:600; }
+    .tag::after { content:"·"; margin-left:9px; color:#8da0b2; }
+    .tag:last-child::after { content:""; }
+    .skill-group + .skill-group { margin-top:9px; }
+    .skill-group h3 { color:#405975; font-size:.71rem; margin:0 0 3px; }
+    .side-list { list-style:none; margin:0; padding:0; font-size:.71rem; }
+    .side-list li { padding:5px 0; border-bottom:0; }
+    .side-list li:last-child { border-bottom:0; }
+    .side-title { display:block; font-weight:700; color:#263e57; }
+    .side-detail { display:block; margin-top:1px; color:var(--muted); font-size:.65rem; }
+    .empty { padding:35px; text-align:center; color:var(--muted); }
+    @media (max-width:760px) { .toolbar { padding:12px 16px; } .resume,.page { width:100%; margin:0; } .page { height:auto; min-height:297mm; } .hero { padding:27px 24px 16px; } main,aside,.page-body { padding-left:24px; padding-right:24px; } .contact { padding-top:14px; } .hero h1 { font-size:1.8rem; } }
+    @media print {
+      @page { size:A4; margin:0; }
+      html,body { width:210mm; background:#fff; }
+      body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      .toolbar { display:none; }
+      /* Do not lock the document to one page: content flows onto subsequent A4 pages. */
+      .resume { width:210mm; margin:0; }
+      .page { width:210mm; height:297mm; margin:0; overflow:hidden; box-shadow:none; break-after:page; page-break-after:always; }
+      .page:last-child { break-after:auto; page-break-after:auto; }
+      /* Grid fragmentation is inconsistent in browser print engines. A linear print flow is dependable across any number of A4 pages. */
+      .body { display:block; }
+      main,.page-body { padding:5mm 14mm 5mm; border-right:0; }
+      aside { padding:0 14mm 7mm; background:#fff; }
+      /* A long section may span pages; individual roles stay together whenever they fit. */
+      section { break-inside:auto; page-break-inside:auto; }
+      .item,.skill,.side-list li { break-inside:avoid; page-break-inside:avoid; }
+      h2 { break-after:avoid; page-break-after:avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="brand">Ivy Resume Builder</div>
+    <div class="actions"><label class="button secondary" for="jsonFile"><i class="fa-solid fa-file-import"></i> Load JSON</label><input id="jsonFile" type="file" accept="application/json,.json"><button class="button secondary" type="button" onclick="downloadSample()"><i class="fa-solid fa-file-arrow-down"></i> Download Sample JSON</button><button class="button" onclick="exportDocx()"><i class="fa-solid fa-file-word"></i> Export Word</button><button class="button" onclick="window.print()"><i class="fa-solid fa-file-pdf"></i> Export PDF</button></div>
+  </div>
+  <div id="resume" class="resume"></div>
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+  <script>
+    const sampleResume = {
+      name: "John Smith",
+      title: "Senior Software Engineer",
+      summary: "Software engineer with experience building reliable web services and cloud applications. Skilled in system design, collaborative delivery, and improving the performance and maintainability of production software.",
+      contact: { email: "john.smith@example.com", phone: "+1 (555) 010-0123", location: "Example City, USA", website: "example.com", linkedin: "linkedin.com/in/john-smith" },
+      experience: [
+        { role: "Senior Software Engineer", company: "Northstar Technology", location: "Example City, USA", dates: "2021 - Present", bullets: ["Designed and delivered backend services for a high-volume customer platform.", "Partnered with product and design teams to ship reliable, accessible features.", "Mentored engineers through code reviews, design sessions, and technical planning."] },
+        { role: "Software Engineer", company: "Harbor Digital", location: "Remote", dates: "2018 - 2021", bullets: ["Built web applications and APIs using modern JavaScript and Java frameworks.", "Improved automated testing and deployment processes across multiple services."] }
+      ],
+      education: [{ degree: "Bachelor of Science in Computer Science", school: "Example State University", dates: "2014 - 2018", detail: "Coursework in software engineering and data systems." }],
+      skills: { Architecture: ["System Design", "API Design", "Distributed Systems"], Engineering: ["Testing", "Performance Optimization", "Code Review"], Collaboration: ["Technical Leadership", "Mentoring", "Agile Delivery"] },
+      tools: ["Java", "TypeScript", "Spring Boot", "React", "PostgreSQL", "Docker", "Kubernetes", "AWS"],
+      certifications: [{ name: "Cloud Developer Certification", detail: "Example Provider - 2024" }],
+      projects: [{ name: "Service Reliability Dashboard", detail: "Internal tool for monitoring application health and release quality." }]
+    };
+    let currentResume = sampleResume;
+    const escape = value => String(value ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    const list = (items, render) => (items || []).map(render).join("");
+    const contactRow = (iconClass, value, link="") => value ? `<div><i class="${iconClass}"></i><span>${link ? `<a href="${link}" target="_blank" rel="noreferrer">${escape(value)}</a>` : escape(value)}</span></div>` : "";
+    function render(data) {
+      currentResume = data;
+      const c = data.contact || {};
+      const experience = list(data.experience, x => `<article class="item"><div class="item-head"><h3>${escape(x.role)}</h3><span class="meta">${escape(x.dates)}</span></div><div class="org">${escape(x.company)}${x.location ? ` · ${escape(x.location)}` : ""}</div>${x.description ? `<p>${escape(x.description)}</p>` : ""}${x.bullets?.length ? `<ul>${list(x.bullets, b => `<li>${escape(b)}</li>`)}</ul>` : ""}</article>`);
+      const education = list(data.education, x => `<article class="item"><div class="item-head"><h3>${escape(x.degree)}</h3><span class="meta">${escape(x.dates)}</span></div><div class="org">${escape(x.school)}</div>${x.detail ? `<p>${escape(x.detail)}</p>` : ""}${x.bullets?.length ? `<ul>${list(x.bullets, b => `<li>${escape(b)}</li>`)}</ul>` : ""}</article>`);
+      const skills = data.skills || {};
+      const skillContent = Array.isArray(skills)
+        ? `<div class="tag-list">${list(skills, x => `<span class="tag">${escape(x.name || x)}</span>`)}</div>`
+        : `<div class="skill-groups">${Object.entries(skills).map(([group, items]) => Array.isArray(items) && items.length ? `<div class="skill-group"><h3>${escape(group)}</h3><div class="tag-list">${list(items, item => `<span class="tag">${escape(item)}</span>`)}</div></div>` : "").join("")}</div>`;
+      const simple = (items) => `<ul class="side-list">${list(items, x => `<li><span class="side-title">${escape(x.name)}</span>${x.detail ? `<span class="side-detail">${escape(x.detail)}</span>` : ""}</li>`)}</ul>`;
+      document.querySelector("#resume").innerHTML = `<header class="hero"><div class="hero-main"><h1>${escape(data.name || "Your Name")}</h1><div class="role">${escape(data.title || "Professional Title")}</div>${data.summary ? `<p class="summary">${escape(data.summary)}</p>` : ""}</div><div class="contact">${contactRow("fa-solid fa-envelope",c.email, c.email ? `mailto:${c.email}` : "")}${contactRow("fa-solid fa-phone",c.phone, c.phone ? `tel:${c.phone.replace(/[^+\d]/g,"")}` : "")}${contactRow("fa-solid fa-location-dot",c.location)}${contactRow("fa-solid fa-globe",c.website, c.website ? `https://${c.website.replace(/^https?:\/\//,"")}` : "")}${contactRow("fa-brands fa-linkedin",c.linkedin, c.linkedin ? `https://${c.linkedin.replace(/^https?:\/\//,"")}` : "")}</div></header><div class="body"><main>${experience ? `<section><h2>Experience</h2>${experience}</section>` : ""}${education ? `<section><h2>Education</h2>${education}</section>` : ""}${data.certifications?.length ? `<section><h2>Certifications</h2>${simple(data.certifications)}</section>` : ""}${data.projects?.length ? `<section><h2>Selected Projects</h2>${simple(data.projects)}</section>` : ""}</main><aside>${Object.keys(skills).length ? `<section><h2>Technical Skills</h2>${skillContent}</section>` : ""}${data.tools?.length ? `<section><h2>Technologies</h2><div class="tag-list">${list(data.tools, t => `<span class="tag">${escape(t)}</span>`)}</div></section>` : ""}${data.languages?.length ? `<section><h2>Languages</h2>${simple(data.languages)}</section>` : ""}</aside></div>`;
+      paginate();
+    }
+    function paginate() {
+      const resume = document.querySelector("#resume");
+      const header = resume.querySelector(".hero");
+      const sources = [...resume.querySelectorAll("main > section, aside > section")];
+      resume.replaceChildren();
+      const newPage = (includeHeader = false) => {
+        const page = document.createElement("article");
+        page.className = "page";
+        if (includeHeader) page.append(header);
+        const body = document.createElement("main");
+        body.className = "page-body";
+        page.append(body);
+        resume.append(page);
+        return { page, body };
+      };
+      let current = newPage(true);
+      const place = block => {
+        current.body.append(block);
+        if (current.page.scrollHeight <= current.page.clientHeight) return;
+        current.body.removeChild(block);
+        current = newPage();
+        current.body.append(block);
+      };
+      for (const source of sources) {
+        const heading = source.querySelector(":scope > h2");
+        const items = heading ? [...source.children].filter(child => child !== heading) : [source];
+        const splitItems = heading && items.some(item => item.matches("article.item"));
+        if (!splitItems) { place(source.cloneNode(true)); continue; }
+        for (const [index, item] of items.entries()) {
+          const section = document.createElement("section");
+          if (index === 0) section.append(heading.cloneNode(true));
+          section.append(item.cloneNode(true));
+          place(section);
+        }
+      }
+    }
+    function exportWord() {
+      const resume = document.querySelector("#resume");
+      if (!resume.querySelector(".page")) { alert("Load a resume JSON file before exporting."); return; }
+      const name = resume.querySelector("h1")?.textContent.trim() || "resume";
+      const safeName = name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "resume";
+      const wordCss = `
+        @page Section1 { size: 595.3pt 841.9pt; margin: 0; mso-header-margin: 0; mso-footer-margin: 0; }
+        div.Section1 { page: Section1; }
+        body { margin: 0; padding: 0; color: #17253a; font-family: Arial, sans-serif; font-size: 9pt; line-height: 1.5; }
+        .page { width: 595.3pt; min-height: 841.9pt; margin: 0; padding: 0; page-break-after: always; }
+        .page:last-child { page-break-after: auto; }
+        .hero { border-top: 5.25pt solid #0c3a67; padding: 34pt 40pt 17pt; text-align: center; }
+        .hero h1 { margin: 0; color: #0c3a67; font-family: Georgia, serif; font-size: 25pt; font-weight: bold; line-height: 1.08; }
+        .role { margin: 6pt 0 0; color: #354e68; font-size: 8.5pt; font-weight: bold; letter-spacing: 1pt; text-transform: uppercase; }
+        .summary { margin: 12pt auto 0; font-size: 8.2pt; line-height: 1.6; }
+        .contact { width: 100%; margin: 11pt 0 0; color: #17253a; font-size: 7.5pt; text-align: center; }
+        .contact td { padding: 0 5pt; text-align: center; } .contact i { display: none; } .contact a { color: #17253a; text-decoration: none; }
+        .page-body { padding: 14pt 40pt 20pt; } .page:not(:first-child) .page-body { padding-top: 34pt; }
+        section { margin: 0 0 16pt; } h2 { margin: 0 0 8pt; padding: 0 0 3pt; color: #0c3a67; border-bottom: 1pt solid #9cafc1; font-family: Georgia, serif; font-size: 10pt; font-weight: bold; letter-spacing: .8pt; text-transform: uppercase; }
+        .item { margin: 0 0 11pt; page-break-inside: avoid; } .item-head { width: 100%; border-collapse: collapse; } .item-head td { padding: 0; vertical-align: baseline; }
+        h3 { margin: 0; color: #17253a; font-family: Arial, sans-serif; font-size: 9.5pt; line-height: 1.35; } .role-cell { width: 100%; } .meta { width: 120pt; color: #617084; font-size: 7.5pt; font-weight: bold; text-align: right; white-space: nowrap; }
+        .org { margin: 2pt 0 5pt; color: #405975; font-size: 8pt; font-weight: bold; } p { margin: 0; font-size: 8.2pt; } ul { margin: 5pt 0 0; padding-left: 16pt; font-size: 8pt; } li { margin: 0 0 3pt; }
+        .tag-list { font-size: 7.7pt; } .tag { color: #314b66; font-weight: bold; } .tag:after { content: " · "; color: #8da0b2; } .tag:last-child:after { content: ""; }
+        .skill-group { margin: 0 0 7pt; } .skill-group h3 { margin: 0 0 2pt; color: #405975; font-size: 8pt; } .side-list { margin: 0; padding: 0; list-style: none; font-size: 8pt; } .side-list li { margin: 0 0 5pt; } .side-title { display: block; color: #263e57; font-weight: bold; } .side-detail { display: block; margin-top: 1pt; color: #617084; font-size: 7.5pt; }
+      `;
+      const wordCompatiblePage = page => {
+        const clone = page.cloneNode(true);
+        [...clone.querySelectorAll("header, main, aside, section, article")].reverse().forEach(element => {
+          const replacement = document.createElement("div");
+          replacement.className = element.className;
+          replacement.innerHTML = element.innerHTML;
+          element.replaceWith(replacement);
+        });
+        clone.querySelectorAll(".item-head").forEach(head => {
+          const title = head.querySelector("h3");
+          const meta = head.querySelector(".meta");
+          if (!title || !meta) return;
+          const table = document.createElement("table");
+          table.className = "item-head";
+          table.setAttribute("role", "presentation");
+          table.innerHTML = `<tbody><tr><td class="role-cell">${title.outerHTML}</td><td>${meta.outerHTML}</td></tr></tbody>`;
+          head.replaceWith(table);
+        });
+        clone.querySelectorAll(".contact").forEach(contact => {
+          const cells = [...contact.children].map(item => `<td>${item.innerHTML}</td>`).join("");
+          const table = document.createElement("table");
+          table.className = "contact";
+          table.setAttribute("role", "presentation");
+          table.innerHTML = `<tbody><tr>${cells}</tr></tbody>`;
+          contact.replaceWith(table);
+        });
+        return clone.innerHTML;
+      };
+      const pageHtml = [...resume.querySelectorAll(".page")].map(page => `<div class="Section1 page">${wordCompatiblePage(page)}</div>`).join("");
+      const documentHtml = `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><meta name="Generator" content="Microsoft Word"><title>${escape(name)}</title><style>${wordCss}</style></head><body>${pageHtml}</body></html>`;
+      const blob = new Blob(["\ufeff", documentHtml], { type: "application/msword" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = `${safeName}-resume.doc`; link.click();
+      URL.revokeObjectURL(url);
+    }
+    const rtfText = value => String(value ?? "").replace(/\\/g, "\\\\").replace(/[{}]/g, "\\$&").replace(/\r?\n/g, "\\line ").replace(/[^\x00-\x7f]/g, character => "\\u" + character.charCodeAt(0) + "?");
+    const rtfParagraph = (text, style = "") => "\\pard" + style + " " + rtfText(text) + "\\par\n";
+    const rtfHeading = text => rtfParagraph(text.toUpperCase(), "\\sa140\\sb40\\brdrb\\brdrs\\brdrw10\\brdrcf5\\cf1\\f1\\fs20\\b");
+    const rtfBullets = items => (items || []).map(item => rtfParagraph("•\t" + item, "\\li360\\fi-180\\tx360\\sa30\\fs16")).join("");
+    const rtfSimpleItems = items => (items || []).map(item => rtfParagraph(item.name, "\\sa10\\b\\fs16") + (item.detail ? rtfParagraph(item.detail, "\\sa70\\cf3\\fs15") : "")).join("");
+    function buildRtf(data) {
+      const c = data.contact || {};
+      const contact = [c.email, c.phone, c.location, c.website, c.linkedin].filter(Boolean).join("  |  ");
+      const position = item => {
+        const organization = (item.company || item.school || "") + (item.location ? " · " + item.location : "");
+        return "\\pard\\sa10\\b\\fs19\\tqr\\tx9000 " + rtfText(item.role || item.degree) + "\\tab\\b0\\fs15\\cf3 " + rtfText(item.dates) + "\\par\n" + rtfParagraph(organization, "\\sa60\\cf2\\b\\fs16") + (item.description ? rtfParagraph(item.description, "\\sa50\\fs16") : "") + rtfBullets(item.bullets) + "\\pard\\sa80\\par\n";
+      };
+      const skills = Array.isArray(data.skills)
+        ? rtfParagraph(data.skills.map(skill => skill.name || skill).join("  ·  "), "\\sa80\\cf2\\b\\fs16")
+        : Object.entries(data.skills || {}).map(entry => rtfParagraph(entry[0], "\\sa10\\cf2\\b\\fs16") + rtfParagraph((entry[1] || []).join("  ·  "), "\\sa80\\cf2\\fs16")).join("");
+      return "{\\rtf1\\ansi\\deff0\n"
+        + "{\\fonttbl{\\f0 Arial;}{\\f1 Georgia;}}\n"
+        + "{\\colortbl;\\red12\\green58\\blue103;\\red64\\green89\\blue117;\\red97\\green112\\blue132;\\red23\\green37\\blue58;\\red156\\green175\\blue193;}\n"
+        + "\\paperw11907\\paperh16840\\margl794\\margr794\\margt0\\margb567\n"
+        + rtfParagraph(data.name || "Your Name", "\\qc\\brdrt\\brdrs\\brdrw105\\brdrcf1\\sb80\\cf1\\f1\\fs48\\b")
+        + rtfParagraph(data.title || "Professional Title", "\\qc\\sa100\\cf2\\fs17\\b")
+        + (data.summary ? rtfParagraph(data.summary, "\\qc\\sa150\\fs16") : "")
+        + (contact ? rtfParagraph(contact, "\\qc\\sa180\\fs15") : "")
+        + (data.experience?.length ? rtfHeading("Experience") + data.experience.map(position).join("") : "")
+        + (data.education?.length ? rtfHeading("Education") + data.education.map(position).join("") : "")
+        + (data.certifications?.length ? rtfHeading("Certifications") + rtfSimpleItems(data.certifications) : "")
+        + (data.projects?.length ? rtfHeading("Selected Projects") + rtfSimpleItems(data.projects) : "")
+        + (Object.keys(data.skills || {}).length ? rtfHeading("Technical Skills") + skills : "")
+        + (data.tools?.length ? rtfHeading("Technologies") + rtfParagraph(data.tools.join("  ·  "), "\\sa80\\cf2\\b\\fs16") : "")
+        + (data.languages?.length ? rtfHeading("Languages") + rtfSimpleItems(data.languages) : "")
+        + "}";
+    }
+    function exportRtf() {
+      const data = currentResume || sampleResume;
+      const safeName = (data.name || "resume").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "resume";
+      const blob = new Blob(["\ufeff", buildRtf(data)], { type: "application/rtf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = safeName + "-resume.rtf"; link.click();
+      URL.revokeObjectURL(url);
+    }
+    async function exportDocx() {
+      if (!window.docx) { alert("The Word export helper could not be loaded. Please check your internet connection and try again."); return; }
+      const data = currentResume || sampleResume;
+      const d = window.docx;
+      const paragraph = (children, options = {}) => new d.Paragraph(Object.assign({ children }, options, { spacing: Object.assign({ line: 270 }, options.spacing || {}) }));
+      const text = (value, options = {}) => new d.TextRun(Object.assign({ text: String(value ?? ""), font: "Arial", size: 18 }, options));
+      const heading = value => paragraph([text(String(value).toUpperCase(), { font: "Georgia", size: 17, bold: true, color: "0C3A67" })], {
+        spacing: { before: 320, after: 160 },
+        border: { bottom: { color: "9CAFC1", space: 1, style: d.BorderStyle.SINGLE, size: 8 } }
+      });
+      const item = value => {
+        const title = value.role || value.degree || "";
+        const organization = (value.company || value.school || "") + (value.location ? " · " + value.location : "");
+        const children = [
+          paragraph([text(title, { bold: true, size: 22 }), text("\t"), text(value.dates || "", { size: 16, bold: true, color: "617084" })], {
+            tabStops: [{ type: d.TabStopType.RIGHT, position: 10300 }],
+            spacing: { before: 30, after: 20 },
+            keepNext: true
+          }),
+          paragraph([text(organization, { bold: true, size: 17, color: "405975" })], { spacing: { after: 100 }, keepNext: true })
+        ];
+        if (value.description) children.push(paragraph([text(value.description)], { spacing: { after: 120 } }));
+        (value.bullets || []).forEach(bullet => children.push(paragraph([text(bullet)], {
+          bullet: { level: 0 },
+          indent: { left: 360, hanging: 180 },
+          spacing: { after: 60 }
+        })));
+        children.push(paragraph([], { spacing: { after: 240 } }));
+        return children;
+      };
+      const simpleItems = values => (values || []).flatMap(value => [
+        paragraph([text(value.name || "", { bold: true })], { spacing: { before: 20, after: value.detail ? 20 : 100 }, keepNext: Boolean(value.detail) }),
+        ...(value.detail ? [paragraph([text(value.detail, { color: "617084", size: 16 })], { spacing: { after: 100 } })] : [])
+      ]);
+      const section = (title, children) => children.length ? [heading(title), ...children] : [];
+      const skills = Array.isArray(data.skills)
+        ? [paragraph([text(data.skills.map(skill => skill.name || skill).join("  ·  "), { bold: true, color: "314B66" })], { spacing: { after: 80 } })]
+        : Object.entries(data.skills || {}).flatMap(entry => [
+          paragraph([text(entry[0], { bold: true, size: 17, color: "405975" })], { spacing: { after: 20 }, keepNext: true }),
+          paragraph([text((entry[1] || []).join("  ·  "), { bold: true, color: "314B66" })], { spacing: { after: 130 } })
+        ]);
+      const contact = [data.contact?.email, data.contact?.phone, data.contact?.location, data.contact?.website, data.contact?.linkedin].filter(Boolean).join("  |  ");
+      const children = [
+        paragraph([text(data.name || "Your Name", { font: "Georgia", size: 48, bold: true, color: "0C3A67", characterSpacing: 8 })], {
+          alignment: d.AlignmentType.CENTER,
+          spacing: { before: 680, after: 70 },
+          border: { top: { color: "0C3A67", space: 1, style: d.BorderStyle.SINGLE, size: 42 } }
+        }),
+        paragraph([text(data.title || "Professional Title", { size: 19, bold: true, color: "354E68", characterSpacing: 18 })], { alignment: d.AlignmentType.CENTER, spacing: { after: 220 } }),
+        ...(data.summary ? [paragraph([text(data.summary, { size: 18 })], { alignment: d.AlignmentType.CENTER, spacing: { after: 240 } })] : []),
+        ...(contact ? [paragraph([text(contact, { size: 16 })], { alignment: d.AlignmentType.CENTER, spacing: { after: 420 } })] : []),
+        ...section("Experience", (data.experience || []).flatMap(item)),
+        ...section("Education", (data.education || []).flatMap(item)),
+        ...section("Certifications", simpleItems(data.certifications)),
+        ...section("Selected Projects", simpleItems(data.projects)),
+        ...section("Technical Skills", skills),
+        ...section("Technologies", data.tools?.length ? [paragraph([text(data.tools.join("  ·  "), { bold: true, color: "314B66" })], { spacing: { after: 80 } })] : []),
+        ...section("Languages", simpleItems(data.languages))
+      ];
+      const documentFile = new d.Document({
+        sections: [{
+          properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 0, right: 794, bottom: 567, left: 794 } } },
+          children
+        }]
+      });
+      const button = document.querySelector('button[onclick="exportDocx()"]');
+      const originalLabel = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Preparing Word…';
+      try {
+        const blob = await d.Packer.toBlob(documentFile);
+        const safeName = (data.name || "resume").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "resume";
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url; link.download = safeName + "-resume.docx"; link.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        alert("Unable to create the Word document. Please try again.");
+      } finally {
+        button.disabled = false;
+        button.innerHTML = originalLabel;
+      }
+    }
+    function downloadSample() {
+      const blob = new Blob([JSON.stringify(sampleResume, null, 2) + "\n"], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = "sample-resume.json"; link.click();
+      URL.revokeObjectURL(url);
+    }
+    document.querySelector("#jsonFile").addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { render(JSON.parse(reader.result)); }
+        catch { alert("That file is not valid resume JSON. Please correct it and try again."); }
+      };
+      reader.readAsText(file);
+    });
+    render(sampleResume);
+  </script>
+</body>
+</html>
